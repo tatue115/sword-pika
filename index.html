@@ -18,12 +18,16 @@
     const groundY = canvas.height - 40;
     const netX = canvas.width / 2 - 5;
 
+    let score1 = 0;
+    let score2 = 0;
+    let maxScore = 5;
+
     let ball = {
-      x: canvas.width / 2,
-      y: 200,
-      dx: 4,
+      x: 100,
+      y: 300,
+      dx: 2.5,
       dy: 0,
-      radius: 10
+      radius: 15
     };
 
     let player1 = {
@@ -47,10 +51,10 @@
     document.addEventListener("keydown", (e) => keys[e.code] = true);
     document.addEventListener("keyup", (e) => keys[e.code] = false);
 
-    function resetBall() {
-      ball.x = canvas.width / 2;
-      ball.y = 200;
-      ball.dx = (Math.random() > 0.5 ? 4 : -4);
+    function resetBall(leftStart = true) {
+      ball.x = leftStart ? player1.x : player2.x;
+      ball.y = player1.y - 50;
+      ball.dx = leftStart ? 2.5 : -2.5;
       ball.dy = 0;
     }
 
@@ -65,6 +69,12 @@
       ctx.fillStyle = "#aaaaaa";
       ctx.fillRect(netX, groundY - 100, 10, 100);
 
+      // Draw score
+      ctx.fillStyle = "#000";
+      ctx.font = "20px Arial";
+      ctx.fillText(`Player 1: ${score1}`, 20, 30);
+      ctx.fillText(`Player 2: ${score2}`, canvas.width - 140, 30);
+
       // Draw ball
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
@@ -78,7 +88,7 @@
       ctx.fillRect(player2.x - 20, player2.y - 40, 40, 40);
     }
 
-    function updatePlayer(p, leftKey, rightKey, jumpKey) {
+    function updatePlayer(p, leftKey, rightKey, jumpKey, leftBound, rightBound) {
       if (keys[leftKey]) p.vx = -5;
       else if (keys[rightKey]) p.vx = 5;
       else p.vx = 0;
@@ -98,8 +108,8 @@
         p.jumping = false;
       }
 
-      // keep in bounds
-      p.x = Math.max(20, Math.min(canvas.width - 20, p.x));
+      // keep in side
+      p.x = Math.max(leftBound, Math.min(rightBound, p.x));
     }
 
     function updateAI() {
@@ -112,6 +122,9 @@
         player2.vy = -10;
         player2.jumping = true;
       }
+
+      player2.x += player2.vx;
+      player2.x = Math.max(netX + 30, Math.min(canvas.width - 20, player2.x));
     }
 
     function updateBall() {
@@ -121,9 +134,16 @@
 
       // bounce off floor
       if (ball.y + ball.radius > groundY) {
-        if (ball.x < netX) alert("Player 2 득점!");
-        else alert("Player 1 득점!");
-        resetBall();
+        if (ball.x < netX) score2++;
+        else score1++;
+
+        if (score1 === maxScore || score2 === maxScore) {
+          alert(score1 === maxScore ? "Player 1 승리!" : "Player 2 승리!");
+          score1 = 0;
+          score2 = 0;
+        }
+
+        resetBall(score1 <= score2);
       }
 
       // bounce off net
@@ -141,7 +161,7 @@
         const dx = ball.x - p.x;
         const dy = ball.y - (p.y - 20);
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 30) {
+        if (dist < 30 + ball.radius) {
           ball.dy = -Math.abs(ball.dy);
           ball.dx = dx * 0.2;
         }
@@ -149,10 +169,9 @@
     }
 
     function loop() {
-      updatePlayer(player1, "KeyA", "KeyD", "KeyW");
+      updatePlayer(player1, "KeyA", "KeyD", "KeyW", 20, netX - 30);
       updateAI();
-      if (!player2.isAI) updatePlayer(player2, "ArrowLeft", "ArrowRight", "ArrowUp");
-      player2.x += player2.vx;
+      if (!player2.isAI) updatePlayer(player2, "ArrowLeft", "ArrowRight", "ArrowUp", netX + 30, canvas.width - 20);
       player2.y += player2.vy;
       player2.vy += gravity;
 
