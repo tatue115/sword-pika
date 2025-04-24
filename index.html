@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>검 가챠 피카츄</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; background-color: #f0f8ff; }
+    .menu, .gacha, .vault, .game { display: none; margin-top: 20px; }
+    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
+    .visible { display: block; }
+    img.logo { width: 300px; margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <img src="logo.png" alt="검 가챠 피카츄" class="logo">
+
+  <div id="main-menu" class="menu visible">
+    <button onclick="startGame()">피카츄 배구</button>
+    <button onclick="openGachaMenu()">검 뽑기</button>
+  </div>
+
+  <div id="gacha-menu" class="menu">
+    <button onclick="drawSword()">검 뽑기 (코인 15개)</button>
+    <button onclick="showVault()">보관함</button>
+    <button onclick="backToMain()">뒤로</button>
+    <p id="coin-count">코인: 0</p>
+    <p id="draw-result"></p>
+  </div>
+
+  <div id="vault" class="vault">
+    <h3>보관함</h3>
+    <div id="sword-list"></div>
+    <button onclick="backToGacha()">뒤로</button>
+  </div>
+
+  <script>
+    let coins = 0;
+    let swords = [];
+    let equippedSword = null;
+
+    function startGame() {
+      const earned = Math.floor(Math.random() * 61) + 90; // 90~150 코인
+      coins += earned;
+      alert(`배구 승리! 코인 ${earned}개 획득!`);
+      document.getElementById("coin-count").textContent = `코인: ${coins}`;
+    }
+
+    function openGachaMenu() {
+      document.getElementById("main-menu").classList.remove("visible");
+      document.getElementById("gacha-menu").classList.add("visible");
+    }
+
+    function backToMain() {
+      document.getElementById("gacha-menu").classList.remove("visible");
+      document.getElementById("main-menu").classList.add("visible");
+    }
+
+    function drawSword() {
+      if (coins < 15) {
+        alert("코인이 부족합니다!");
+        return;
+      }
+      coins -= 15;
+      const newSword = `검 ${Math.floor(Math.random() * 1000)}`;
+      swords.push(newSword);
+      document.getElementById("draw-result").textContent = `${newSword} 획득!`;
+      document.getElementById("coin-count").textContent = `코인: ${coins}`;
+    }
+
+    function showVault() {
+      document.getElementById("gacha-menu").classList.remove("visible");
+      document.getElementById("vault").classList.add("visible");
+      const list = document.getElementById("sword-list");
+      list.innerHTML = swords.map((s, i) => `
+        <div>
+          <span>${s}</span>
+          <button onclick="equipSword(${i})">장착</button>
+        </div>
+      `).join('');
+    }
+
+    function equipSword(index) {
+      equippedSword = swords[index];
+      alert(`${equippedSword} 장착 완료!`);
+    }
+
+    function backToGacha() {
+      document.getElementById("vault").classList.remove("visible");
+      document.getElementById("gacha-menu").classList.add("visible");
+    }
+  </script>
+</body>
+</html>
