@@ -1,223 +1,173 @@
-from pathlib import Path
-
-# 반영된 업데이트: 1인용/2인용 모드 선택, 피카츄 배구 스타일 키 설정 포함 (스파이크 포함)
-updated_html = """
 <!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>검 가챠 피카츄</title>
+  <title>검 가챠 피카츄 배구</title>
   <style>
-    body { font-family: sans-serif; text-align: center; background-color: #f0f8ff; }
-    .menu, .gacha, .vault, .game, .mode-select { display: none; margin-top: 20px; }
-    button { margin: 10px; padding: 10px 20px; font-size: 16px; }
-    .visible { display: block; }
-    img.logo { width: 300px; margin-top: 30px; }
-    canvas { background: #fff; border: 2px solid #ccc; margin-top: 20px; }
+    body { margin: 0; background: #88ccff; overflow: hidden; }
+    canvas { display: block; margin: auto; background: #ccffff; border: 3px solid #444; }
   </style>
 </head>
 <body>
-  <img src="long.png" alt="검 가챠 피카츄" class="logo">
-
-  <div id="main-menu" class="menu visible">
-    <button onclick="showModeSelect()">피카츄 배구</button>
-    <button onclick="openGachaMenu()">검 뽑기</button>
-  </div>
-
-  <div id="mode-select" class="mode-select">
-    <h3>게임 모드 선택</h3>
-    <button onclick="startVolleyballGame('single')">1인용</button>
-    <button onclick="startVolleyballGame('multi')">2인용</button>
-    <button onclick="backToMain()">뒤로</button>
-  </div>
-
-  <div id="gacha-menu" class="menu">
-    <button onclick="drawSword()">검 뽑기 (코인 15개)</button>
-    <button onclick="showVault()">보관함</button>
-    <button onclick="backToMain()">뒤로</button>
-    <p id="coin-count">코인: 0</p>
-    <p id="draw-result"></p>
-  </div>
-
-  <div id="vault" class="vault">
-    <h3>보관함</h3>
-    <div id="sword-list"></div>
-    <button onclick="backToGacha()">뒤로</button>
-  </div>
-
-  <div id="game-canvas" class="game">
-    <canvas id="volleyball" width="600" height="300"></canvas><br>
-    <button onclick="endGame()">게임 종료</button>
-  </div>
-
+  <canvas id="gameCanvas" width="800" height="400"></canvas>
   <script>
-    let coins = 0;
-    let swords = [];
-    let equippedSword = null;
-    let gameMode = 'single';
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-    function showModeSelect() {
-      document.getElementById("main-menu").classList.remove("visible");
-      document.getElementById("mode-select").classList.add("visible");
+    const gravity = 0.4;
+    const groundY = canvas.height - 40;
+    const netX = canvas.width / 2 - 5;
+
+    let ball = {
+      x: canvas.width / 2,
+      y: 200,
+      dx: 4,
+      dy: 0,
+      radius: 10
+    };
+
+    let player1 = {
+      x: 100,
+      y: groundY,
+      vx: 0,
+      vy: 0,
+      jumping: false
+    };
+
+    let player2 = {
+      x: 700,
+      y: groundY,
+      vx: 0,
+      vy: 0,
+      jumping: false,
+      isAI: true
+    };
+
+    const keys = {};
+    document.addEventListener("keydown", (e) => keys[e.code] = true);
+    document.addEventListener("keyup", (e) => keys[e.code] = false);
+
+    function resetBall() {
+      ball.x = canvas.width / 2;
+      ball.y = 200;
+      ball.dx = (Math.random() > 0.5 ? 4 : -4);
+      ball.dy = 0;
     }
 
-    function startVolleyballGame(mode) {
-      gameMode = mode;
-      document.getElementById("mode-select").classList.remove("visible");
-      document.getElementById("game-canvas").classList.add("visible");
-      startGame(mode);
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Draw ground
+      ctx.fillStyle = "#00aa00";
+      ctx.fillRect(0, groundY, canvas.width, 40);
+
+      // Draw net
+      ctx.fillStyle = "#aaaaaa";
+      ctx.fillRect(netX, groundY - 100, 10, 100);
+
+      // Draw ball
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+      ctx.fillStyle = "#ffaa00";
+      ctx.fill();
+
+      // Draw players
+      ctx.fillStyle = "yellow";
+      ctx.fillRect(player1.x - 20, player1.y - 40, 40, 40);
+      ctx.fillStyle = "orange";
+      ctx.fillRect(player2.x - 20, player2.y - 40, 40, 40);
     }
 
-    function openGachaMenu() {
-      document.getElementById("main-menu").classList.remove("visible");
-      document.getElementById("gacha-menu").classList.add("visible");
-    }
+    function updatePlayer(p, leftKey, rightKey, jumpKey) {
+      if (keys[leftKey]) p.vx = -5;
+      else if (keys[rightKey]) p.vx = 5;
+      else p.vx = 0;
 
-    function backToMain() {
-      document.getElementById("gacha-menu").classList.remove("visible");
-      document.getElementById("mode-select").classList.remove("visible");
-      document.getElementById("main-menu").classList.add("visible");
-    }
-
-    function drawSword() {
-      if (coins < 15) {
-        alert("코인이 부족합니다!");
-        return;
-      }
-      coins -= 15;
-      const newSword = `검 ${Math.floor(Math.random() * 1000)}`;
-      swords.push(newSword);
-      document.getElementById("draw-result").textContent = `${newSword} 획득!`;
-      document.getElementById("coin-count").textContent = `코인: ${coins}`;
-    }
-
-    function showVault() {
-      document.getElementById("gacha-menu").classList.remove("visible");
-      document.getElementById("vault").classList.add("visible");
-      const list = document.getElementById("sword-list");
-      list.innerHTML = swords.map((s, i) => `
-        <div>
-          <span>${s}</span>
-          <button onclick="equipSword(${i})">장착</button>
-        </div>
-      `).join('');
-    }
-
-    function equipSword(index) {
-      equippedSword = swords[index];
-      alert(`${equippedSword} 장착 완료!`);
-    }
-
-    function backToGacha() {
-      document.getElementById("vault").classList.remove("visible");
-      document.getElementById("gacha-menu").classList.add("visible");
-    }
-
-    function endGame() {
-      document.getElementById("game-canvas").classList.remove("visible");
-      document.getElementById("main-menu").classList.add("visible");
-    }
-
-    function startGame(mode) {
-      const canvas = document.getElementById("volleyball");
-      const ctx = canvas.getContext("2d");
-      let ball = { x: 300, y: 150, dx: 3, dy: 2, radius: 10 };
-      let paddle1 = { x: 50, y: 260, vx: 0, vy: 0, width: 30, height: 30, jumping: false };
-      let paddle2 = { x: 520, y: 260, vx: 0, vy: 0, width: 30, height: 30, jumping: false };
-      const gravity = 0.5;
-      const jumpPower = -10;
-      let keys = {};
-
-      document.onkeydown = e => keys[e.code] = true;
-      document.onkeyup = e => keys[e.code] = false;
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // Draw ball
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "orange";
-        ctx.fill();
-
-        // Ball movement
-        ball.x += ball.dx;
-        ball.y += ball.dy;
-
-        if (ball.x < ball.radius || ball.x > canvas.width - ball.radius) ball.dx *= -1;
-        if (ball.y < ball.radius) ball.dy *= -1;
-        if (ball.y > canvas.height - ball.radius) {
-          alert("게임 종료!");
-          if (gameMode === 'single') {
-            const reward = Math.floor(Math.random() * 61) + 90;
-            coins += reward;
-            alert(`AI 승리! 코인 ${reward}개 획득!`);
-          }
-          endGame();
-          return;
-        }
-
-        // Control paddles
-        if (gameMode === 'multi') {
-          if (keys["KeyA"]) paddle1.vx = -5;
-          else if (keys["KeyD"]) paddle1.vx = 5;
-          else paddle1.vx = 0;
-
-          if (!paddle1.jumping && keys["KeyW"]) {
-            paddle1.vy = jumpPower;
-            paddle1.jumping = true;
-          }
-          if (keys["ShiftLeft"]) console.log("Player 1 Spike!");
-
-          if (keys["ArrowLeft"]) paddle2.vx = -5;
-          else if (keys["ArrowRight"]) paddle2.vx = 5;
-          else paddle2.vx = 0;
-
-          if (!paddle2.jumping && keys["ArrowUp"]) {
-            paddle2.vy = jumpPower;
-            paddle2.jumping = true;
-          }
-          if (keys["Enter"]) console.log("Player 2 Spike!");
-        } else {
-          // 1인용: Player controls paddle1, AI controls paddle2
-          paddle1.vx = keys["KeyA"] ? -5 : keys["KeyD"] ? 5 : 0;
-          if (!paddle1.jumping && keys["KeyW"]) {
-            paddle1.vy = jumpPower;
-            paddle1.jumping = true;
-          }
-          if (keys["ShiftLeft"]) console.log("Player 1 Spike!");
-
-          // AI: move toward ball
-          if (ball.x > paddle2.x + paddle2.width / 2) paddle2.vx = 2;
-          else if (ball.x < paddle2.x + paddle2.width / 2) paddle2.vx = -2;
-          else paddle2.vx = 0;
-        }
-
-        [paddle1, paddle2].forEach(p => {
-          p.x += p.vx;
-          p.y += p.vy;
-          p.vy += gravity;
-          if (p.y > 260) {
-            p.y = 260;
-            p.vy = 0;
-            p.jumping = false;
-          }
-          ctx.fillStyle = "blue";
-          ctx.fillRect(p.x, p.y, p.width, p.height);
-        });
-
-        requestAnimationFrame(draw);
+      if (!p.jumping && keys[jumpKey]) {
+        p.vy = -10;
+        p.jumping = true;
       }
 
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vy += gravity;
+
+      if (p.y >= groundY) {
+        p.y = groundY;
+        p.vy = 0;
+        p.jumping = false;
+      }
+
+      // keep in bounds
+      p.x = Math.max(20, Math.min(canvas.width - 20, p.x));
+    }
+
+    function updateAI() {
+      if (!player2.isAI) return;
+      if (ball.x > netX + 10 && ball.x > player2.x + 5) player2.vx = 2.5;
+      else if (ball.x < player2.x - 5) player2.vx = -2.5;
+      else player2.vx = 0;
+
+      if (!player2.jumping && ball.y < player2.y - 60 && Math.abs(ball.x - player2.x) < 50) {
+        player2.vy = -10;
+        player2.jumping = true;
+      }
+    }
+
+    function updateBall() {
+      ball.x += ball.dx;
+      ball.y += ball.dy;
+      ball.dy += gravity;
+
+      // bounce off floor
+      if (ball.y + ball.radius > groundY) {
+        if (ball.x < netX) alert("Player 2 득점!");
+        else alert("Player 1 득점!");
+        resetBall();
+      }
+
+      // bounce off net
+      if (ball.x + ball.radius > netX && ball.x - ball.radius < netX + 10 && ball.y + ball.radius > groundY - 100) {
+        ball.dx = -ball.dx;
+      }
+
+      // bounce off walls
+      if (ball.x - ball.radius < 0 || ball.x + ball.radius > canvas.width) {
+        ball.dx = -ball.dx;
+      }
+
+      // player collision
+      [player1, player2].forEach(p => {
+        const dx = ball.x - p.x;
+        const dy = ball.y - (p.y - 20);
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 30) {
+          ball.dy = -Math.abs(ball.dy);
+          ball.dx = dx * 0.2;
+        }
+      });
+    }
+
+    function loop() {
+      updatePlayer(player1, "KeyA", "KeyD", "KeyW");
+      updateAI();
+      if (!player2.isAI) updatePlayer(player2, "ArrowLeft", "ArrowRight", "ArrowUp");
+      player2.x += player2.vx;
+      player2.y += player2.vy;
+      player2.vy += gravity;
+
+      if (player2.y >= groundY) {
+        player2.y = groundY;
+        player2.vy = 0;
+        player2.jumping = false;
+      }
+
+      updateBall();
       draw();
+      requestAnimationFrame(loop);
     }
+
+    loop();
   </script>
 </body>
 </html>
-"""
-
-# Save the final HTML
-file_path = Path("/mnt/data/index.html")
-file_path.write_text(updated_html, encoding="utf-8")
-
-file_path.name
